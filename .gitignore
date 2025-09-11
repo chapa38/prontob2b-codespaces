@@ -1,0 +1,6 @@
+.env
+*.sql
+*.sql.gz
+*.dump
+*.tar.gz
+/data-seed/

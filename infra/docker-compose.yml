@@ -1,0 +1,86 @@
+services:
+  mautic:
+    image: mautic/mautic:6.0.5
+    depends_on: [mautic-db]
+    environment:
+      MAUTIC_DB_HOST: mautic-db
+      MAUTIC_DB_NAME: ${MAUTIC_DB_NAME}
+      MAUTIC_DB_USER: ${MAUTIC_DB_USER}
+      MAUTIC_DB_PASSWORD: ${MAUTIC_DB_PASSWORD}
+      MAUTIC_TRUSTED_PROXIES: 0.0.0.0/0
+      PHP_MEMORY_LIMIT: 1024M
+    ports:
+      - "8080:80"
+    volumes:
+      - mautic_media:/var/www/html/media
+      - mautic_var:/var/www/html/var
+
+  mautic-cron:
+    image: mautic/mautic:6.0.5
+    depends_on: [mautic]
+    environment:
+      MAUTIC_DB_HOST: mautic-db
+      MAUTIC_DB_NAME: ${MAUTIC_DB_NAME}
+      MAUTIC_DB_USER: ${MAUTIC_DB_USER}
+      MAUTIC_DB_PASSWORD: ${MAUTIC_DB_PASSWORD}
+    command: >
+      sh -lc '
+      while :; do
+        php /var/www/html/bin/console mautic:segments:update --batch-limit=500 --time-limit=240 || true;
+        php /var/www/html/bin/console mautic:campaigns:update || true;
+        php /var/www/html/bin/console mautic:campaigns:trigger --batch-limit=200 || true;
+        php /var/www/html/bin/console mautic:messages:send || true;
+        php /var/www/html/bin/console mautic:webhooks:process || true;
+        sleep 300;
+      done
+      '
+    volumes:
+      - mautic_media:/var/www/html/media
+      - mautic_var:/var/www/html/var
+
+  mautic-db:
+    image: mariadb:10.6
+    environment:
+      MARIADB_DATABASE: ${MAUTIC_DB_NAME}
+      MARIADB_USER: ${MAUTIC_DB_USER}
+      MARIADB_PASSWORD: ${MAUTIC_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+    volumes:
+      - mautic_db:/var/lib/mysql
+
+  n8n:
+    image: n8nio/n8n:1.64.0
+    depends_on: [n8n-db]
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: n8n-db
+      DB_POSTGRESDB_DATABASE: ${N8N_DB_NAME}
+      DB_POSTGRESDB_USER: ${N8N_DB_USER}
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
+      N8N_DISABLE_PRODUCTION_MAIN_PROCESS: "true"
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  n8n-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${N8N_DB_NAME}
+      POSTGRES_USER: ${N8N_DB_USER}
+      POSTGRES_PASSWORD: ${N8N_DB_PASSWORD}
+    volumes:
+      - n8n_db:/var/lib/postgresql/data
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+volumes:
+  mautic_db:
+  mautic_media:
+  mautic_var:
+  n8n_db:
+  n8n_data:

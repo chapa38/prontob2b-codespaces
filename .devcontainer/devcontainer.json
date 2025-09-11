@@ -1,0 +1,20 @@
+{
+  "name": "ProntoB2B Stack",
+  "dockerComposeFile": [
+    "../infra/docker-compose.yml",
+    "../infra/docker-compose.dev.codespaces.yml"
+  ],
+  "service": "mautic",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "forwardPorts": [8080, 5678, 8025],
+  "portsAttributes": {
+    "8080": {"label": "Mautic"},
+    "5678": {"label": "n8n"},
+    "8025": {"label": "MailHog"}
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "postCreateCommand": "echo 'Dev up ✅'"
+}
